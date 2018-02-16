@@ -1,4 +1,4 @@
-package check_mk_ng
+package check_ng
 
 import (
 	"fmt"

@@ -7,7 +7,7 @@ import (
 	"net"
 	"os"
 
-	checkmk "github.com/penguinpowernz/check-mk-ng"
+	checkmk "github.com/penguinpowernz/check-ng"
 )
 
 const (
