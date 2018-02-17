@@ -7,39 +7,95 @@ import (
 	"net"
 	"os"
 
+	"github.com/gin-gonic/gin"
 	checkmk "github.com/penguinpowernz/check-ng"
+	"github.com/penguinpowernz/check-ng/client"
 )
 
-const (
-	CONN_HOST   = "localhost"
-	CONN_PORT   = "5665"
-	CONN_TYPE   = "tcp"
-	DEFAULT_DIR = "/usr/lib/check_mk_agent/local"
-)
+const defaultDir = "/usr/lib/check_mk_agent/local"
 
 func main() {
-	var dir string
-	var dump bool
+	var dir, host, port string
+	var dump, http, udp bool
 
-	flag.StringVar(&dir, "dir", DEFAULT_DIR, "")
+	flag.StringVar(&dir, "dir", defaultDir, "")
+	flag.StringVar(&host, "host", "localhost", "")
+	flag.StringVar(&port, "port", "5665", "")
 	flag.BoolVar(&dump, "dump", false, "")
+	flag.BoolVar(&http, "http", false, "")
+	flag.BoolVar(&udp, "udp", false, "")
 	flag.Parse()
 
+	log.SetOutput(os.Stderr)
 	log.Println("Using dir:", dir)
 
-	log.SetOutput(os.Stderr)
+	switch {
+	case http:
+		runHTTP(dir, host, port)
+	case dump:
+		dumpOut(dir)
+	default:
+		runRaw(udp, dir, host, port)
+	}
+}
 
-	if dump {
-		log.Println("dumping...")
-		if err := Write(dir, os.Stdout); err != nil {
-			log.Printf("ERROR: %s", err)
-			os.Exit(1)
+func dumpOut(dir string) {
+	log.Println("dumping...")
+	if err := write(dir, os.Stdout); err != nil {
+		log.Printf("ERROR: %s", err)
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
+func runHTTP(dir, host, port string) {
+	api := gin.Default()
+
+	api.GET("/", func(c *gin.Context) {
+		c.Status(200)
+		write(dir, c.Writer)
+	})
+
+	api.GET("/tree", func(c *gin.Context) {
+		cl := client.New()
+		err := write(dir, cl)
+		if err != nil {
+			c.AbortWithError(500, err)
+			return
 		}
-		os.Exit(0)
+
+		c.JSON(200, cl.Tree())
+	})
+
+	api.GET("/tree/:section", func(c *gin.Context) {
+		cl := client.New()
+		err := write(dir, cl)
+		if err != nil {
+			c.AbortWithError(500, err)
+			return
+		}
+
+		sect, found := cl.Tree()[c.Param("section")]
+
+		if !found {
+			c.AbortWithStatus(404)
+			return
+		}
+
+		c.JSON(200, sect)
+	})
+
+	api.Run(host + ":" + port)
+}
+
+func runRaw(udp bool, dir, host, port string) {
+	// Listen for incoming connections.
+	connType := "tcp"
+	if udp {
+		connType = "udp"
 	}
 
-	// Listen for incoming connections.
-	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
+	l, err := net.Listen(connType, host+":"+port)
 	if err != nil {
 		log.Println("Error listening:", err.Error())
 		os.Exit(1)
@@ -47,7 +103,7 @@ func main() {
 
 	// Close the listener when the application closes.
 	defer l.Close()
-	log.Println("Listening on " + CONN_HOST + ":" + CONN_PORT)
+	log.Println("Listening on " + host + ":" + port)
 
 	for {
 		// Listen for an incoming connection.
@@ -58,7 +114,7 @@ func main() {
 		}
 
 		// Send a response back to person contacting us.
-		if err := Write(dir, conn); err != nil {
+		if err := write(dir, conn); err != nil {
 			log.Printf("ERROR: %s", err)
 		}
 		// Close the connection when you're done with it.
@@ -66,7 +122,7 @@ func main() {
 	}
 }
 
-func Write(dir string, w io.Writer) (err error) {
+func write(dir string, w io.Writer) (err error) {
 	err = checkmk.WriteHeader(dir, w)
 	if err != nil {
 		return

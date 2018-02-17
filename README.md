@@ -28,7 +28,23 @@ You can also specify the directory to run the scripts from (by default it uses `
 
     check-ng -dump -dir /var/lib/check-ng/scripts
 
+You can specify the host and port to listen on:
+
+    check-ng -host 0.0.0.0 -port 6556
+
+You can also specify to use UDP instead:
+
+    check-ng -udp -port 4545
+
+Or even HTTP:
+
+    check-ng -http -port 8080
+    curl localhost:8080/ -o raw.txt
+    curl localhost:8080/tree -o sections_and_lines.json
+    curl localhost:8080/tree/df -o df_lines.json
+
 ## Todo
 
 - [ ] add ability to change port
 - [ ] add compatability mode to be fully backwards compatible
+- [ ] complete the tree endpoints in the API
