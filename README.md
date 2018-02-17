@@ -62,7 +62,7 @@ you may opt to output JSON or YAML to make it easier for processes that read you
 
 ## Todo
 
-- [ ] add ability to change port
+- [x] add ability to change port
 - [ ] add compatability mode to be fully backwards compatible
 - [ ] complete the tree endpoints in the API
 - [ ] multiple directory support
