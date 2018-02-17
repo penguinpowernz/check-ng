@@ -43,8 +43,26 @@ Or even HTTP:
     curl localhost:8080/tree -o sections_and_lines.json
     curl localhost:8080/tree/df -o df_lines.json
 
+## Your Own Scripts
+
+You can create your own plugins, in the same was as you would for check-mk-agent.  Simply make an executable script
+and put it in the directory you run `check-ng` from (default `/usr/lib/check_mk_agent/local`):
+
+```
+#!/bin/bash
+
+# this script puts the database info out for check-mk to serve
+
+echo "<<<databases>>>"  # must include this as it becomes the title
+ls -l /data/*.db        # the output for this script
+```
+
+Of course it can be written in any language, or can even be a binary as long as it includes the header line: `<<<title>>>` and
+you may opt to output JSON or YAML to make it easier for processes that read your output to parse.
+
 ## Todo
 
 - [ ] add ability to change port
 - [ ] add compatability mode to be fully backwards compatible
 - [ ] complete the tree endpoints in the API
+- [ ] multiple directory support
